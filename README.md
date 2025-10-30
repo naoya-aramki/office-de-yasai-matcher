@@ -34,12 +34,26 @@ pnpm db:push
 
 ### 環境変数
 
-`.env`ファイルを作成し、以下の環境変数を設定してください：
+`.env.example`をコピーして`.env`ファイルを作成し、以下の環境変数を設定してください：
 
-```env
-DATABASE_URL=mysql://user:password@localhost:3306/database_name
-NODE_ENV=development
+```bash
+cp .env.example .env
 ```
+
+#### 必須の環境変数
+
+- `DATABASE_URL`: MySQLデータベースの接続URL
+  - 例: `mysql://user:password@localhost:3306/office_de_yasai_matcher`
+- `JWT_SECRET`: Cookie署名用のシークレットキー（ランダムな文字列を生成してください）
+- `NODE_ENV`: 実行環境（`development` または `production`）
+
+#### オプションの環境変数
+
+- `VITE_APP_ID`: アプリケーションID
+- `OAUTH_SERVER_URL`: OAuth認証サーバーのURL
+- `OWNER_OPEN_ID`: オーナーのOpenID
+- `BUILT_IN_FORGE_API_URL`: Forge API URL（AI機能用）
+- `BUILT_IN_FORGE_API_KEY`: Forge APIキー（AI機能用）
 
 ### 開発サーバーの起動
 
