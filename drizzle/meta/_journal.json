@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1761818048123,
+      "tag": "0000_sturdy_gabe_jones",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1761818115840,
+      "tag": "0001_careless_blue_shield",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1761822117841,
+      "tag": "0002_absent_pestilence",
+      "breakpoints": true
+    }
+  ]
+}
