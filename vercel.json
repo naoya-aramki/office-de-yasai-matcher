@@ -3,6 +3,11 @@
   "outputDirectory": "dist/public",
   "installCommand": "npm ci --legacy-peer-deps || npm install --legacy-peer-deps",
   "framework": null,
+  "functions": {
+    "api/server.js": {
+      "includeFiles": "dist/public/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
