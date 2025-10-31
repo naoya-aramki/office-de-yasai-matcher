@@ -8,52 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { trpc } from "@/lib/trpc";
 import { Loader2, CheckCircle2, Building2, Users, Target, ExternalLink, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
 
 export default function Home() {
-  // Require authentication - redirect to login if not authenticated
-  const { user, loading } = useAuth({ redirectOnUnauthenticated: true });
-
-  // Show loading state while checking authentication
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // Show login prompt if not authenticated (fallback, should redirect automatically)
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 flex items-center justify-center">
-        <Card className="max-w-md w-full">
-          <CardHeader>
-            <CardTitle>認証が必要です</CardTitle>
-            <CardDescription>
-              @officedeyasai.jpのメールアドレスでログインしてください
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              onClick={() => {
-                const loginUrl = getLoginUrl();
-                if (loginUrl && loginUrl !== "#") {
-                  window.location.href = loginUrl;
-                } else {
-                  toast.error("ログインURLが設定されていません。環境変数を確認してください。");
-                }
-              }}
-              className="w-full"
-            >
-              ログイン
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Authentication temporarily disabled
   const [industry, setIndustry] = useState("");
   const [employeeCount, setEmployeeCount] = useState("");
   const [challenges, setChallenges] = useState("");

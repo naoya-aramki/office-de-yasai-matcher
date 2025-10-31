@@ -293,8 +293,9 @@ class SDKServer {
       throw ForbiddenError("User not found");
     }
 
-    // Validate email domain on every request - only @officedeyasai.jp emails are allowed
-    validateEmailDomain(user.email);
+    // Email domain validation temporarily disabled
+    // TODO: Re-enable when OAuth is properly configured
+    // validateEmailDomain(user.email);
 
     await db.upsertUser({
       openId: user.openId,
