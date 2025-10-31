@@ -16,6 +16,34 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 // OAuth callback under /api/oauth/callback
 registerOAuthRoutes(app);
 
+// Health check endpoint for debugging
+app.get("/api/health", async (req, res) => {
+  try {
+    const { getDb } = await import("../server/db");
+    const db = await getDb();
+    
+    const dbStatus = db ? "connected" : "not connected";
+    const envVars = {
+      DATABASE_URL: process.env.DATABASE_URL ? "set (length: " + process.env.DATABASE_URL.length + ")" : "NOT SET",
+      NODE_ENV: process.env.NODE_ENV || "NOT SET",
+      JWT_SECRET: process.env.JWT_SECRET ? "set" : "NOT SET",
+    };
+    
+    res.json({
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      database: dbStatus,
+      environment: envVars,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      status: "error",
+      error: error.message,
+      stack: error.stack,
+    });
+  }
+});
+
 // tRPC API - must be before static file serving
 app.use(
   "/api/trpc",
