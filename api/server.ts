@@ -16,7 +16,7 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 // OAuth callback under /api/oauth/callback
 registerOAuthRoutes(app);
 
-// tRPC API
+// tRPC API - must be before static file serving
 app.use(
   "/api/trpc",
   createExpressMiddleware({
@@ -25,10 +25,21 @@ app.use(
   })
 );
 
-// Serve static files in production
+// 404 handler for API routes (before static files)
+app.use("/api/*", (req, res) => {
+  res.status(404).json({ error: "API endpoint not found" });
+});
+
+// Serve static files in production (must be last)
 if (process.env.NODE_ENV === "production") {
   serveStatic(app);
 }
+
+// Error handling middleware (must be last)
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error("[Server Error]", err);
+  res.status(500).json({ error: "Internal server error", message: err.message });
+});
 
 // Export the Express app as a Vercel serverless function
 export default app;
