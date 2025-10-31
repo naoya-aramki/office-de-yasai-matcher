@@ -97,13 +97,30 @@ export const appRouter = router({
   cases: router({
     // 全事例を取得（認証なし）
     getAll: publicProcedure.query(async () => {
-      const allCases = await getAllCases();
-      return allCases.map(c => ({
-        ...c,
-        challenges: c.challenges ? JSON.parse(c.challenges) : [],
-        reasons: c.reasons ? JSON.parse(c.reasons) : [],
-        effects: c.effects ? JSON.parse(c.effects) : [],
-      }));
+      try {
+        const allCases = await getAllCases();
+        return allCases.map(c => {
+          try {
+            return {
+              ...c,
+              challenges: c.challenges ? JSON.parse(c.challenges) : [],
+              reasons: c.reasons ? JSON.parse(c.reasons) : [],
+              effects: c.effects ? JSON.parse(c.effects) : [],
+            };
+          } catch (parseError) {
+            console.error("[Cases] Failed to parse JSON for case:", c.id, parseError);
+            return {
+              ...c,
+              challenges: [],
+              reasons: [],
+              effects: [],
+            };
+          }
+        });
+      } catch (error) {
+        console.error("[Cases] Failed to get all cases:", error);
+        throw new Error(`データの取得に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }),
 
     // マッチング実行（認証なし）
@@ -115,11 +132,12 @@ export const appRouter = router({
         excludeIds: z.array(z.number()).optional(), // 除外するID
       }))
       .mutation(async ({ input }) => {
-        const allCases = await getAllCases();
-        
-        if (allCases.length === 0) {
-          throw new Error('導入事例データが見つかりません');
-        }
+        try {
+          const allCases = await getAllCases();
+          
+          if (allCases.length === 0) {
+            throw new Error('導入事例データが見つかりません。データベース接続を確認してください。');
+          }
 
         // 除外IDを考慮
         const excludeIds = input.excludeIds || [];
@@ -131,26 +149,41 @@ export const appRouter = router({
 
         // 各事例とのマッチングスコアを計算
         const scoredCases = filteredCases.map(c => {
-          const caseChallenges = c.challenges ? JSON.parse(c.challenges) : [];
-          const { score, reasons } = calculateMatchScore(
-            input.industry,
-            input.employeeCount,
-            input.challenges,
-            c.industry,
-            c.employeeCount,
-            caseChallenges
-          );
+          try {
+            const caseChallenges = c.challenges ? JSON.parse(c.challenges) : [];
+            const { score, reasons } = calculateMatchScore(
+              input.industry,
+              input.employeeCount,
+              input.challenges,
+              c.industry,
+              c.employeeCount,
+              caseChallenges
+            );
 
-          return {
-            case: {
-              ...c,
-              challenges: caseChallenges,
-              reasons: c.reasons ? JSON.parse(c.reasons) : [],
-              effects: c.effects ? JSON.parse(c.effects) : [],
-            },
-            score,
-            matchReasons: reasons,
-          };
+            return {
+              case: {
+                ...c,
+                challenges: caseChallenges,
+                reasons: c.reasons ? JSON.parse(c.reasons) : [],
+                effects: c.effects ? JSON.parse(c.effects) : [],
+              },
+              score,
+              matchReasons: reasons,
+            };
+          } catch (parseError) {
+            console.error("[Cases] Failed to parse JSON for case:", c.id, parseError);
+            // パースエラーが発生した場合でもスコア0で処理を続行
+            return {
+              case: {
+                ...c,
+                challenges: [],
+                reasons: [],
+                effects: [],
+              },
+              score: 0,
+              matchReasons: [],
+            };
+          }
         });
 
         // スコアでソートして最高スコアの事例を返す
@@ -162,6 +195,10 @@ export const appRouter = router({
           matchScore: bestMatch.score,
           matchReasons: bestMatch.matchReasons,
         };
+      } catch (error) {
+        console.error("[Cases] Match error:", error);
+        throw new Error(`マッチング処理に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
       }),
   }),
 });

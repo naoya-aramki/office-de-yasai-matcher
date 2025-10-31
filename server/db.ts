@@ -1,18 +1,24 @@
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { InsertUser, users, cases, InsertCase, Case } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { sql } from "drizzle-orm";
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let _sql: ReturnType<typeof postgres> | null = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      // PostgreSQL用の接続プールを作成
+      _sql = postgres(process.env.DATABASE_URL);
+      _db = drizzle(_sql);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
+      _sql = null;
     }
   }
   return _db;
@@ -68,7 +74,11 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    // PostgreSQLではupdatedAtを明示的に更新
+    updateSet.updatedAt = sql`now()`;
+
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
       set: updateSet,
     });
   } catch (error) {
@@ -105,10 +115,15 @@ export async function getAllCases(): Promise<Case[]> {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get cases: database not available");
-    return [];
+    throw new Error("データベース接続が利用できません。DATABASE_URL環境変数を確認してください。");
   }
 
-  return await db.select().from(cases);
+  try {
+    return await db.select().from(cases);
+  } catch (error) {
+    console.error("[Database] Failed to get cases:", error);
+    throw new Error(`データの取得に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
 export async function getCaseById(id: number): Promise<Case | undefined> {
