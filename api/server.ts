@@ -22,8 +22,13 @@ app.use(
   createExpressMiddleware({
     router: appRouter,
     createContext,
-    onError: ({ error, path, type }) => {
-      console.error(`[tRPC Error] ${type} ${path}:`, error);
+    onError: ({ error, path, type, ctx }) => {
+      console.error(`[tRPC Error] ${type} ${path}:`, {
+        message: error.message,
+        code: error.code,
+        cause: error.cause,
+        stack: error.stack,
+      });
     },
   })
 );
@@ -40,8 +45,21 @@ if (process.env.NODE_ENV === "production") {
 
 // Error handling middleware (must be last)
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error("[Server Error]", err);
-  res.status(500).json({ error: "Internal server error", message: err.message });
+  console.error("[Server Error]", {
+    message: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+  });
+  
+  // Always return JSON, never HTML
+  if (!res.headersSent) {
+    res.status(500).json({ 
+      error: "Internal server error", 
+      message: err.message,
+      ...(process.env.NODE_ENV === "development" && { stack: err.stack })
+    });
+  }
 });
 
 // Export the Express app as a Vercel serverless function

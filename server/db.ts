@@ -10,13 +10,30 @@ let _sql: ReturnType<typeof postgres> | null = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
+  if (!_db) {
+    if (!process.env.DATABASE_URL) {
+      console.error("[Database] DATABASE_URL is not set");
+      return null;
+    }
+    
     try {
       // PostgreSQL用の接続プールを作成
-      _sql = postgres(process.env.DATABASE_URL);
+      console.log("[Database] Connecting to database...");
+      _sql = postgres(process.env.DATABASE_URL, {
+        max: 1, // Vercel serverless functions用に接続数を制限
+      });
       _db = drizzle(_sql);
+      
+      // 接続テスト
+      await _sql`SELECT 1`;
+      console.log("[Database] Connected successfully");
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+      console.error("[Database] Failed to connect:", {
+        message: error instanceof Error ? error.message : String(error),
+        code: (error as any)?.code,
+        detail: (error as any)?.detail,
+        hint: (error as any)?.hint,
+      });
       _db = null;
       _sql = null;
     }
