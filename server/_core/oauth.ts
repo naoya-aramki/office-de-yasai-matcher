@@ -2,6 +2,7 @@ import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
+import { validateEmailDomain } from "./emailValidation";
 import { sdk } from "./sdk";
 
 function getQueryParam(req: Request, key: string): string | undefined {
@@ -25,6 +26,21 @@ export function registerOAuthRoutes(app: Express) {
 
       if (!userInfo.openId) {
         res.status(400).json({ error: "openId missing from user info" });
+        return;
+      }
+
+      // Validate email domain - only @officedeyasai.jp emails are allowed
+      try {
+        validateEmailDomain(userInfo.email);
+      } catch (error) {
+        console.warn(
+          `[OAuth] Access denied for email: ${userInfo.email || "unknown"}`
+        );
+        res.status(403).json({
+          error: "Access denied",
+          message:
+            "Only @officedeyasai.jp email addresses are allowed to access this application.",
+        });
         return;
       }
 

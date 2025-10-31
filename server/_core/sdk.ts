@@ -7,6 +7,7 @@ import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
+import { validateEmailDomain } from "./emailValidation";
 import type {
   ExchangeTokenRequest,
   ExchangeTokenResponse,
@@ -291,6 +292,9 @@ class SDKServer {
     if (!user) {
       throw ForbiddenError("User not found");
     }
+
+    // Validate email domain on every request - only @officedeyasai.jp emails are allowed
+    validateEmailDomain(user.email);
 
     await db.upsertUser({
       openId: user.openId,

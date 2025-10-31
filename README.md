@@ -71,6 +71,73 @@ pnpm dev
 - `pnpm test` - テストを実行
 - `pnpm db:push` - データベースマイグレーション
 
+## セキュリティ機能
+
+このアプリケーションは、**@officedeyasai.jp のメールアドレスを持つユーザーのみがアクセス可能**です。
+
+- OAuth認証時にメールアドレスのドメインをチェック
+- すべてのAPIリクエストでメールアドレスを検証
+- 許可されていないメールアドレスからのアクセスは自動的に拒否
+
+## Vercelへのデプロイ
+
+### 1. Vercelアカウントの準備
+
+1. [Vercel](https://vercel.com)にアクセスしてアカウントを作成
+2. GitHubアカウントと連携
+
+### 2. プロジェクトのインポート
+
+1. Vercelダッシュボードで「New Project」をクリック
+2. GitHubリポジトリ `naoya-aramki/office-de-yasai-matcher` を選択
+3. プロジェクト設定を確認：
+   - **Framework Preset**: Other
+   - **Root Directory**: `./` (そのまま)
+   - **Build Command**: `pnpm build`
+   - **Output Directory**: `dist/public`
+   - **Install Command**: `pnpm install`
+
+### 3. 環境変数の設定
+
+Vercelのプロジェクト設定で、以下の環境変数を追加：
+
+**必須:**
+- `DATABASE_URL` - MySQLデータベースの接続URL（例: `mysql://user:password@host:3306/database`）
+- `JWT_SECRET` - Cookie署名用のシークレットキー（ランダムな文字列）
+- `NODE_ENV` - `production`
+
+**オプション:**
+- `VITE_APP_ID` - アプリケーションID
+- `OAUTH_SERVER_URL` - OAuth認証サーバーのURL
+- `OWNER_OPEN_ID` - オーナーのOpenID
+- `BUILT_IN_FORGE_API_URL` - Forge API URL
+- `BUILT_IN_FORGE_API_KEY` - Forge APIキー
+
+### 4. データベースのセットアップ
+
+Vercelではデータベースマイグレーションを自動実行できないため、以下のいずれかの方法で実行：
+
+**方法1: ローカルから実行**
+```bash
+DATABASE_URL="your_production_database_url" pnpm db:push
+```
+
+**方法2: Vercel CLIを使用**
+```bash
+vercel env pull .env.production
+DATABASE_URL=$(grep DATABASE_URL .env.production | cut -d '=' -f2) pnpm db:push
+```
+
+### 5. デプロイ
+
+1. 「Deploy」ボタンをクリック
+2. ビルドが完了するまで待機
+3. デプロイされたURLにアクセスして動作確認
+
+### 6. カスタムドメイン（オプション）
+
+Vercelのプロジェクト設定からカスタムドメインを設定できます。
+
 ## ライセンス
 
 MIT
