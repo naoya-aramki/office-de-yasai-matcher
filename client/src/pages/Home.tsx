@@ -8,8 +8,47 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { trpc } from "@/lib/trpc";
 import { Loader2, CheckCircle2, Building2, Users, Target, ExternalLink, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
 
 export default function Home() {
+  // Require authentication - redirect to login if not authenticated
+  const { user, loading } = useAuth({ redirectOnUnauthenticated: true });
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Show login prompt if not authenticated (fallback, should redirect automatically)
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 flex items-center justify-center">
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <CardTitle>認証が必要です</CardTitle>
+            <CardDescription>
+              @officedeyasai.jpのメールアドレスでログインしてください
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={() => {
+                window.location.href = getLoginUrl();
+              }}
+              className="w-full"
+            >
+              ログイン
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
   const [industry, setIndustry] = useState("");
   const [employeeCount, setEmployeeCount] = useState("");
   const [challenges, setChallenges] = useState("");
@@ -328,7 +367,7 @@ export default function Home() {
       {/* フッター */}
       <footer className="border-t bg-white/80 backdrop-blur-sm mt-16">
         <div className="container py-8 text-center text-sm text-muted-foreground">
-          <p>© 2025 オフィスで野菜 導入事例マッチングツール</p>
+          <p>[KOMPEITO]</p>
         </div>
       </footer>
     </div>
