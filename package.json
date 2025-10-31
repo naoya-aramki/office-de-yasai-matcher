@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
-    "build": "npx vite build && npx esbuild api/server.ts --platform=node --packages=external --bundle --format=esm --outfile=api/server.js --resolve-extensions=.ts,.js --loader:.ts=ts",
+    "build": "npx vite build && npx esbuild api/server.ts --platform=node --packages=external --bundle --format=esm --outfile=api/server.js --resolve-extensions=.ts,.js --loader:.ts=ts && rm -f api/server.ts",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
