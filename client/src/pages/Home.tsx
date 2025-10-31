@@ -38,7 +38,12 @@ export default function Home() {
           <CardContent>
             <Button
               onClick={() => {
-                window.location.href = getLoginUrl();
+                const loginUrl = getLoginUrl();
+                if (loginUrl && loginUrl !== "#") {
+                  window.location.href = loginUrl;
+                } else {
+                  toast.error("ログインURLが設定されていません。環境変数を確認してください。");
+                }
               }}
               className="w-full"
             >
