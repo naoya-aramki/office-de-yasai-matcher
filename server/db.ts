@@ -12,30 +12,39 @@ let _sql: ReturnType<typeof postgres> | null = null;
 export async function getDb() {
   if (!_db) {
     if (!process.env.DATABASE_URL) {
-      console.error("[Database] DATABASE_URL is not set");
+      console.error("[Database] DATABASE_URL is not set - this will cause API errors!");
+      console.error("[Database] Please set DATABASE_URL in Vercel environment variables");
       return null;
     }
     
     try {
       // PostgreSQL用の接続プールを作成
-      console.log("[Database] Connecting to database...");
+      console.log("[Database] Connecting to database...", {
+        url_prefix: process.env.DATABASE_URL.substring(0, 20) + "...",
+      });
       _sql = postgres(process.env.DATABASE_URL, {
         max: 1, // Vercel serverless functions用に接続数を制限
+        idle_timeout: 20,
+        connect_timeout: 10,
       });
       _db = drizzle(_sql);
       
       // 接続テスト
+      console.log("[Database] Testing connection...");
       await _sql`SELECT 1`;
-      console.log("[Database] Connected successfully");
+      console.log("[Database] Connected successfully ✓");
     } catch (error) {
       console.error("[Database] Failed to connect:", {
         message: error instanceof Error ? error.message : String(error),
         code: (error as any)?.code,
         detail: (error as any)?.detail,
         hint: (error as any)?.hint,
+        stack: error instanceof Error ? error.stack : undefined,
       });
       _db = null;
       _sql = null;
+      // エラーを再スローして呼び出し元に伝える
+      throw new Error(`データベース接続に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
   return _db;

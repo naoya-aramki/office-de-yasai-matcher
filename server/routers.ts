@@ -132,8 +132,17 @@ export const appRouter = router({
         excludeIds: z.array(z.number()).optional(), // 除外するID
       }))
       .mutation(async ({ input }) => {
+        console.log("[Cases] Match request received:", {
+          industry: input.industry,
+          employeeCount: input.employeeCount,
+          challenges: input.challenges?.substring(0, 50) + "...",
+          excludeIds: input.excludeIds,
+        });
+        
         try {
+          console.log("[Cases] Fetching all cases from database...");
           const allCases = await getAllCases();
+          console.log(`[Cases] Retrieved ${allCases.length} cases from database`);
           
           if (allCases.length === 0) {
             throw new Error('導入事例データが見つかりません。データベース接続を確認してください。');

@@ -23,7 +23,22 @@ export default function Home() {
       toast.success("マッチングが完了しました");
     },
     onError: (error) => {
-      toast.error(`エラーが発生しました: ${error.message}`);
+      console.error("[Frontend] Match error:", error);
+      console.error("[Frontend] Error details:", {
+        message: error.message,
+        data: error.data,
+        shape: error.shape,
+      });
+      
+      // より詳細なエラーメッセージを表示
+      let errorMessage = error.message;
+      if (error.data?.code) {
+        errorMessage += ` (コード: ${error.data.code})`;
+      }
+      
+      toast.error(`エラーが発生しました: ${errorMessage}`, {
+        duration: 10000, // 10秒間表示
+      });
     },
   });
 
