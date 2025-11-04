@@ -7,12 +7,19 @@ import { appRouter } from "../server/routers";
 import { createContext } from "../server/_core/context";
 import { serveStatic } from "../server/_core/vite";
 
-// デバッグ情報をログ出力
-console.log("[Server] Starting server...", {
-  NODE_ENV: process.env.NODE_ENV,
-  DATABASE_URL: process.env.DATABASE_URL ? "設定済み" : "未設定",
-  DATABASE_URL_length: process.env.DATABASE_URL?.length || 0,
-});
+// Vercel環境の検出
+const isVercel = !!process.env.VERCEL;
+const isProduction = process.env.NODE_ENV === "production";
+
+// デバッグ情報をログ出力（本番環境では最小限）
+if (!isProduction || process.env.VERCEL_ENV === "development") {
+  console.log("[Server] Starting server...", {
+    NODE_ENV: process.env.NODE_ENV,
+    VERCEL: isVercel,
+    DATABASE_URL: process.env.DATABASE_URL ? "設定済み" : "未設定",
+    DATABASE_URL_length: process.env.DATABASE_URL?.length || 0,
+  });
+}
 
 const app = express();
 
@@ -54,26 +61,39 @@ app.use("/api/*", (req, res) => {
 });
 
 // Serve static files in production (must be last)
-if (process.env.NODE_ENV === "production") {
+// Vercel環境では静的ファイルは自動的に配信されるが、
+// SPAルーティングのためにフォールバックを提供
+if (isProduction) {
   serveStatic(app);
 }
 
 // Error handling middleware (must be last)
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const isDevelopment = process.env.NODE_ENV === "development" || process.env.VERCEL_ENV === "development";
+  
   console.error("[Server Error]", {
     message: err.message,
-    stack: err.stack,
     url: req.url,
     method: req.method,
+    isVercel: isVercel,
+    ...(isDevelopment && { stack: err.stack }),
   });
   
   // Always return JSON, never HTML
   if (!res.headersSent) {
-    res.status(500).json({ 
-      error: "Internal server error", 
+    // データベース接続エラーの場合は詳細なメッセージを返す
+    const statusCode = err.statusCode || 500;
+    const errorResponse: any = {
+      error: statusCode >= 500 ? "Internal server error" : "Request error",
       message: err.message,
-      ...(process.env.NODE_ENV === "development" && { stack: err.stack })
-    });
+    };
+    
+    // 開発環境でのみスタックトレースを返す
+    if (isDevelopment) {
+      errorResponse.stack = err.stack;
+    }
+    
+    res.status(statusCode).json(errorResponse);
   }
 });
 

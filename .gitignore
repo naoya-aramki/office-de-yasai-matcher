@@ -105,6 +105,3 @@ temp/
 *.db
 *.sqlite
 *.sqlite3
-
-# Vercel serverless function (built from src/api-server.ts)
-api/server.js

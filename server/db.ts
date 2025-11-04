@@ -18,14 +18,20 @@ export async function getDb() {
     }
     
     try {
-      // PostgreSQL用の接続プールを作成
+      // PostgreSQL用の接続プールを作成（Vercel + Supabase最適化）
       console.log("[Database] Connecting to database...", {
         url_prefix: process.env.DATABASE_URL.substring(0, 20) + "...",
+        isVercel: !!process.env.VERCEL,
       });
+      
+      // Vercel serverless functions向けの最適化設定
+      // Supabaseの接続制限を考慮（通常は最大100接続）
       _sql = postgres(process.env.DATABASE_URL, {
-        max: 1, // Vercel serverless functions用に接続数を制限
-        idle_timeout: 20,
-        connect_timeout: 10,
+        max: 1, // Serverless functionごとに1接続（接続プールは不要）
+        idle_timeout: 5, // アイドルタイムアウトを短く（5秒）
+        connect_timeout: 10, // 接続タイムアウト10秒
+        prepare: false, // プリペアドステートメントを無効化（Supabaseで互換性問題がある場合がある）
+        ssl: 'require', // SupabaseはSSL必須
       });
       _db = drizzle(_sql);
       
@@ -34,17 +40,34 @@ export async function getDb() {
       await _sql`SELECT 1`;
       console.log("[Database] Connected successfully ✓");
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorCode = (error as any)?.code;
+      
       console.error("[Database] Failed to connect:", {
-        message: error instanceof Error ? error.message : String(error),
-        code: (error as any)?.code,
+        message: errorMessage,
+        code: errorCode,
         detail: (error as any)?.detail,
         hint: (error as any)?.hint,
-        stack: error instanceof Error ? error.stack : undefined,
+        isVercel: !!process.env.VERCEL,
+        stack: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.stack : undefined) : undefined,
       });
+      
       _db = null;
       _sql = null;
-      // エラーを再スローして呼び出し元に伝える
-      throw new Error(`データベース接続に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      // Supabase特有のエラーメッセージを改善
+      let userFriendlyMessage = "データベース接続に失敗しました";
+      if (errorCode === "ECONNREFUSED") {
+        userFriendlyMessage = "データベースサーバーに接続できません。DATABASE_URLを確認してください。";
+      } else if (errorCode === "ETIMEDOUT") {
+        userFriendlyMessage = "データベースへの接続がタイムアウトしました。ネットワーク接続を確認してください。";
+      } else if (errorMessage.includes("SSL")) {
+        userFriendlyMessage = "SSL接続に失敗しました。Supabaseの接続文字列を確認してください。";
+      } else if (errorMessage.includes("password") || errorMessage.includes("authentication")) {
+        userFriendlyMessage = "データベース認証に失敗しました。DATABASE_URLの認証情報を確認してください。";
+      }
+      
+      throw new Error(`${userFriendlyMessage}: ${errorMessage}`);
     }
   }
   return _db;

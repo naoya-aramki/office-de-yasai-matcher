@@ -48,26 +48,46 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  // In Vercel, static files are served from dist/public
-  // In local production, they're in dist/public relative to the server
-  const distPath = process.env.VERCEL
+  // Vercel環境では、静的ファイルはVercelが自動的に配信する
+  // ただし、SPAルーティングのためにフォールバックを提供
+  const isVercel = !!process.env.VERCEL;
+  
+  // 静的ファイルのパスを決定
+  const distPath = isVercel
     ? path.resolve(process.cwd(), "dist", "public")
-    : process.env.NODE_ENV === "development"
-      ? path.resolve(import.meta.dirname, "../..", "dist", "public")
-      : path.resolve(import.meta.dirname, "../..", "dist", "public");
+    : path.resolve(import.meta.dirname, "../..", "dist", "public");
   
   if (!fs.existsSync(distPath)) {
     console.error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`
+      `[Static] Could not find the build directory: ${distPath}, make sure to build the client first`
     );
+    // Vercel環境では、ビルドディレクトリが見つからない場合は警告のみ
+    // （Vercelが自動的に配信するため）
+    if (!isVercel) {
+      return; // ローカル環境では早期リターン
+    }
   }
 
-  // Serve static files - frontend will handle authentication
-  app.use(express.static(distPath));
+  // Vercel環境では、APIルート以外のリクエストのみ静的ファイルを配信
+  // APIルートは先に処理されているため、ここに来るのは静的ファイルかSPAルーティング用
+  if (!isVercel) {
+    // ローカル環境では静的ファイルを明示的に配信
+    app.use(express.static(distPath));
+  }
 
-  // Fall through to index.html for all routes (SPA routing)
-  // Frontend will check authentication and redirect to login if needed
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+  // SPAルーティング用のフォールバック
+  // APIルート以外の全てのリクエストをindex.htmlにフォールバック
+  app.use("*", (req, res, next) => {
+    // APIルートは既に処理されているはずなので、ここには来ない
+    if (req.path.startsWith("/api/")) {
+      return next();
+    }
+    
+    const indexPath = path.resolve(distPath, "index.html");
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      res.status(404).json({ error: "Not found" });
+    }
   });
 }

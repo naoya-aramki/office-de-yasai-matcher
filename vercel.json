@@ -3,9 +3,19 @@
   "outputDirectory": "dist/public",
   "installCommand": "npm ci --legacy-peer-deps || npm install --legacy-peer-deps",
   "framework": null,
+  "functions": {
+    "api/server.js": {
+      "maxDuration": 30,
+      "memory": 1024
+    }
+  },
   "rewrites": [
     {
-      "source": "/api/(.*)",
+      "source": "/api/trpc/(.*)",
+      "destination": "/api/server"
+    },
+    {
+      "source": "/api/oauth/(.*)",
       "destination": "/api/server"
     },
     {
