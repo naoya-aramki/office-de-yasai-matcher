@@ -2,6 +2,19 @@
 
 このドキュメントでは、Vercelで必要な各環境変数の取得方法を詳しく説明します。
 
+## ⚠️ 重要なセキュリティ注意事項
+
+**絶対にパスワードや機密情報をこのファイルやGitリポジトリにコミットしないでください！**
+
+- DATABASE_URLにはパスワードが含まれます
+- JWT_SECRETは機密情報です
+- これらをGitにコミットすると、誰でもアクセス可能になります
+- データベースが不正アクセスされる可能性があります
+
+**ローカル開発用の設定方法**:
+- `.env`ファイルを使用（`.gitignore`に含まれています）
+- `.env.example`ファイルにプレースホルダーを記載（実際の値は含めない）
+
 ---
 
 ## 1. DATABASE_URL（Supabase PostgreSQL接続URL）
@@ -204,6 +217,48 @@ production
 - [ ] `VITE_APP_ID`: Google Cloud ConsoleでOAuth Client IDを作成済み
 - [ ] `VITE_OAUTH_PORTAL_URL`: OAuthサーバーのURLを確認済み
 - [ ] `NODE_ENV`: `production` に設定予定
+
+---
+
+## 💾 ローカル開発用の設定方法
+
+### 一時的なメモとして使う場合
+
+**⚠️ 絶対にGitにコミットしないでください！**
+
+もし一時的にメモとして残したい場合は、以下の方法があります：
+
+1. **`.env.local`ファイルを作成**（`.gitignore`に含まれています）
+   ```bash
+   # .env.local（Gitにコミットされません）
+   DATABASE_URL=postgresql://postgres:your_password@...
+   JWT_SECRET=your_secret_here
+   ```
+
+2. **別のローカル専用ファイルを作成**
+   ```bash
+   # .env.private（.gitignoreに追加）
+   DATABASE_URL=postgresql://postgres:your_password@...
+   ```
+
+3. **パスワードマネージャーを使用**
+   - 1Password、LastPass、Bitwardenなど
+   - 安全に管理できます
+
+### `.env`ファイルの例
+
+プロジェクトルートに`.env`ファイルを作成（`.gitignore`に含まれています）：
+
+```bash
+# .env（このファイルはGitにコミットされません）
+DATABASE_URL=postgresql://postgres:your_actual_password@db.xxxxx.supabase.co:5432/postgres
+JWT_SECRET=your_generated_secret_here
+VITE_APP_ID=your_google_oauth_client_id
+VITE_OAUTH_PORTAL_URL=https://oauth-server-url.com
+NODE_ENV=development
+```
+
+**重要**: `.env`ファイルは既に`.gitignore`に含まれているため、Gitにコミットされません。
 
 ---
 
