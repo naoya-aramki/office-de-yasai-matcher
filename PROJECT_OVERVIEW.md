@@ -79,24 +79,31 @@
 ```
 office-de-yasai-matcher/
 ├── api/
-│   └── server.ts              # Vercel serverless function（メインエントリーポイント）
+│   └── server.js              # Vercel serverless function（ビルド済み）
+├── src/
+│   └── api-server.ts          # Serverless functionのソースコード
 ├── client/
 │   ├── src/
 │   │   ├── pages/
 │   │   │   └── Home.tsx       # メインページ（マッチングUI）
 │   │   ├── components/        # UIコンポーネント
+│   │   ├── _core/
+│   │   │   └── hooks/
+│   │   │       └── useAuth.ts # 認証フック
 │   │   └── lib/
 │   │       └── trpc.ts        # tRPCクライアント設定
 │   └── public/                # 静的ファイル
 ├── server/
 │   ├── _core/
-│   │   ├── context.ts         # tRPCコンテキスト
-│   │   ├── oauth.ts           # OAuth認証（現在は無効化）
+│   │   ├── context.ts         # tRPCコンテキスト（認証情報を含む）
+│   │   ├── oauth.ts           # OAuth認証ルーティング
+│   │   ├── emailValidation.ts # メールアドレスドメインチェック
+│   │   ├── sdk.ts             # OAuth SDK（認証処理）
 │   │   └── vite.ts            # 静的ファイル配信
 │   ├── routers.ts             # tRPCルーター（マッチングロジック）
 │   └── db.ts                  # データベースアクセス
 ├── drizzle/
-│   └── schema.ts              # データベーススキーマ
+│   └── schema.ts              # データベーススキーマ（users, casesテーブル）
 ├── shared/                    # フロントエンド・バックエンド共通コード
 ├── package.json
 ├── vercel.json                # Vercel設定
