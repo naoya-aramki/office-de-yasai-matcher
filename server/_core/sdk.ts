@@ -293,9 +293,17 @@ class SDKServer {
       throw ForbiddenError("User not found");
     }
 
-    // Email domain validation temporarily disabled
-    // TODO: Re-enable when OAuth is properly configured
-    // validateEmailDomain(user.email);
+    // Email domain validation - @officedeyasai.jp only
+    try {
+      validateEmailDomain(user.email);
+    } catch (error) {
+      console.warn(
+        `[Auth] Access denied for email: ${user.email || "unknown"}`
+      );
+      throw ForbiddenError(
+        "このアプリケーションは@officedeyasai.jpのメールアドレスでのみアクセス可能です。"
+      );
+    }
 
     await db.upsertUser({
       openId: user.openId,

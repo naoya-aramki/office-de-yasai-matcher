@@ -1,7 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { getAllCases } from "./db";
 import { z } from "zod";
 
@@ -95,8 +95,8 @@ export const appRouter = router({
   }),
 
   cases: router({
-    // 全事例を取得（認証なし）
-    getAll: publicProcedure.query(async () => {
+    // 全事例を取得（認証必須）
+    getAll: protectedProcedure.query(async () => {
       try {
         const allCases = await getAllCases();
         return allCases.map(c => {
@@ -123,8 +123,8 @@ export const appRouter = router({
       }
     }),
 
-    // マッチング実行（認証なし）
-    match: publicProcedure
+    // マッチング実行（認証必須）
+    match: protectedProcedure
       .input(z.object({
         industry: z.string(),
         employeeCount: z.number().nullable(),

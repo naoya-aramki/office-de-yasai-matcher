@@ -29,21 +29,21 @@ export function registerOAuthRoutes(app: Express) {
         return;
       }
 
-      // Email domain validation temporarily disabled
-      // TODO: Re-enable when OAuth is properly configured
-      // try {
-      //   validateEmailDomain(userInfo.email);
-      // } catch (error) {
-      //   console.warn(
-      //     `[OAuth] Access denied for email: ${userInfo.email || "unknown"}`
-      //   );
-      //   res.status(403).json({
-      //     error: "Access denied",
-      //     message:
-      //       "Only @officedeyasai.jp email addresses are allowed to access this application.",
-      //   });
-      //   return;
-      // }
+      // Email domain validation - @officedeyasai.jp only
+      try {
+        validateEmailDomain(userInfo.email);
+        console.log(`[OAuth] Access granted for email: ${userInfo.email}`);
+      } catch (error) {
+        console.warn(
+          `[OAuth] Access denied for email: ${userInfo.email || "unknown"}`
+        );
+        res.status(403).json({
+          error: "Access denied",
+          message:
+            "このアプリケーションは@officedeyasai.jpのメールアドレスでのみアクセス可能です。",
+        });
+        return;
+      }
 
       await db.upsertUser({
         openId: userInfo.openId,

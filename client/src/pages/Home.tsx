@@ -8,9 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { trpc } from "@/lib/trpc";
 import { Loader2, CheckCircle2, Building2, Users, Target, ExternalLink, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
 
 export default function Home() {
-  // Authentication temporarily disabled
+  // 認証チェック
+  const { user, loading: authLoading, isAuthenticated, logout } = useAuth({
+    redirectOnUnauthenticated: true,
+  });
+
   const [industry, setIndustry] = useState("");
   const [employeeCount, setEmployeeCount] = useState("");
   const [challenges, setChallenges] = useState("");
@@ -29,6 +35,17 @@ export default function Home() {
         data: error.data,
         shape: error.shape,
       });
+      
+      // 認証エラーの場合はログイン画面へリダイレクト
+      if (error.data?.code === "UNAUTHORIZED" || error.data?.code === "FORBIDDEN") {
+        toast.error("認証が必要です。ログインしてください。", {
+          duration: 5000,
+        });
+        setTimeout(() => {
+          window.location.href = getLoginUrl();
+        }, 1000);
+        return;
+      }
       
       // より詳細なエラーメッセージを表示
       let errorMessage = error.message;
@@ -83,16 +100,52 @@ export default function Home() {
     });
   };
 
+  // 認証チェック中はローディング表示
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-green-600" />
+          <p className="text-muted-foreground">認証中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 未認証の場合はログイン画面へリダイレクト（useAuthで自動的にリダイレクトされる）
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50">
       {/* ヘッダー */}
       <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="container py-4">
-          <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="OFFICE DE YASAI" className="h-12" />
-            <div className="border-l pl-3 ml-2">
-              <p className="text-sm text-muted-foreground">導入事例マッチングツール</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <img src="/logo.png" alt="OFFICE DE YASAI" className="h-12" />
+              <div className="border-l pl-3 ml-2">
+                <p className="text-sm text-muted-foreground">導入事例マッチングツール</p>
+              </div>
             </div>
+            {user && (
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-muted-foreground">
+                  {user.name || user.email}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    await logout();
+                    window.location.href = getLoginUrl();
+                  }}
+                >
+                  ログアウト
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </header>
