@@ -159,9 +159,12 @@ office-de-yasai-matcher/
 - `JWT_SECRET`: Cookie署名用シークレット
 - `NODE_ENV`: `production`
 
+#### 認証用（必須）
+- `VITE_APP_ID`: Google OAuth App ID（Google Cloud Consoleで取得）
+- `OAUTH_SERVER_URL`: OAuthサーバーURL（Google Identity Services用）
+
 #### オプション
-- `VITE_APP_ID`: OAuth App ID（現在は未使用）
-- `OAUTH_SERVER_URL`: OAuthサーバーURL（現在は未使用）
+- `OWNER_OPEN_ID`: 管理者のOpenID（現在は未使用）
 
 ---
 
@@ -211,16 +214,49 @@ office-de-yasai-matcher/
 
 ## 🔐 セキュリティ
 
-### 現在の状態
+### 認証要件
 
-- **認証**: 一時的に無効化（公開アクセス可能）
-- **将来的な実装**: `@officedeyasai.jp`ドメインのメールアドレスでの認証
+**`@officedeyasai.jp`のメールアドレスでのみアクセス可能**
+
+- **認証方式**: Google OAuth（シンプルなワンクリック認証）
+- **要件**: ブラウザにログインしているGoogleアカウントのメールアドレスが`@officedeyasai.jp`であること
+- **実装方法**: 
+  - Google Identity Services（One Tap）を使用
+  - ブラウザに既にログインしているGoogleアカウントを自動検出
+  - メールアドレスのドメインをチェック（`@officedeyasai.jp`のみ許可）
+  - 認証済みセッションはCookieで管理（1年間有効）
+
+### 認証フロー
+
+```
+1. ユーザーがページにアクセス
+   ↓
+2. Google Identity Servicesが自動的にブラウザのログイン状態を検出
+   ↓
+3. ワンクリックで認証（既にログイン済みの場合は自動）
+   ↓
+4. メールアドレスのドメインをチェック
+   - `@officedeyasai.jp` → アクセス許可 ✅
+   - その他 → アクセス拒否 ❌
+   ↓
+5. セッションCookieを発行（1年間有効）
+   ↓
+6. 認証済みユーザーとしてページにアクセス可能
+```
+
+### 実装の特徴
+
+- **シンプル**: 複雑なログインフォーム不要
+- **スムーズ**: ブラウザに既にログインしている場合は自動認証
+- **セキュア**: Googleの認証システムを利用
+- **使いやすい**: 認証後は1年間ログイン状態を維持
 
 ### データ保護
 
 - 環境変数による機密情報の管理
 - HTTPS通信（Vercelが自動提供）
 - SQLインジェクション対策（Drizzle ORM）
+- セッションCookieの署名と暗号化
 
 ---
 
@@ -228,7 +264,7 @@ office-de-yasai-matcher/
 
 ### 機能追加
 
-- [ ] 認証機能の有効化（`@officedeyasai.jp`ドメイン）
+- [x] 認証機能の実装（`@officedeyasai.jp`ドメイン） - **実装予定**
 - [ ] マッチング履歴の保存
 - [ ] お気に入り機能
 - [ ] エクスポート機能（PDF、CSV）
