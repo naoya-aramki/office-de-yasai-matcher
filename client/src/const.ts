@@ -6,18 +6,11 @@ export const APP_LOGO =
   import.meta.env.VITE_APP_LOGO ||
   "https://placehold.co/128x128/E1E7EF/1F2937?text=App";
 
-// Generate login URL at runtime so redirect URI reflects the current origin.
+// Generate Google OAuth login URL at runtime so redirect URI reflects the current origin.
 export const getLoginUrl = () => {
-  const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
   const appId = import.meta.env.VITE_APP_ID;
   
   // Check if required environment variables are set
-  if (!oauthPortalUrl) {
-    console.error("VITE_OAUTH_PORTAL_URL is not configured");
-    // Return a fallback URL or show an error message
-    return "#";
-  }
-  
   if (!appId) {
     console.error("VITE_APP_ID is not configured");
     return "#";
@@ -27,11 +20,15 @@ export const getLoginUrl = () => {
   const state = btoa(redirectUri);
 
   try {
-    const url = new URL(`${oauthPortalUrl}/app-auth`);
-    url.searchParams.set("appId", appId);
-    url.searchParams.set("redirectUri", redirectUri);
+    // Google OAuth 2.0 authorization endpoint
+    const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+    url.searchParams.set("client_id", appId);
+    url.searchParams.set("redirect_uri", redirectUri);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("scope", "openid email profile");
     url.searchParams.set("state", state);
-    url.searchParams.set("type", "signIn");
+    url.searchParams.set("access_type", "offline");
+    url.searchParams.set("prompt", "consent");
 
     return url.toString();
   } catch (error) {

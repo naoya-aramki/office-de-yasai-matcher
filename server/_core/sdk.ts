@@ -1,6 +1,6 @@
 import { AXIOS_TIMEOUT_MS, COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { ForbiddenError } from "@shared/_core/errors";
-import axios, { type AxiosInstance } from "axios";
+import axios from "axios";
 import { parse as parseCookieHeader } from "cookie";
 import type { Request } from "express";
 import { SignJWT, jwtVerify } from "jose";
@@ -8,13 +8,6 @@ import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
 import { validateEmailDomain } from "./emailValidation";
-import type {
-  ExchangeTokenRequest,
-  ExchangeTokenResponse,
-  GetUserInfoResponse,
-  GetUserInfoWithJwtRequest,
-  GetUserInfoWithJwtResponse,
-} from "./types/manusTypes";
 // Utility function
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.length > 0;
@@ -25,16 +18,50 @@ export type SessionPayload = {
   name: string;
 };
 
-const EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
-const GET_USER_INFO_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfo`;
-const GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfoWithJwt`;
+// Google OAuth types
+export type GoogleTokenResponse = {
+  access_token: string;
+  expires_in: number;
+  refresh_token?: string;
+  scope: string;
+  token_type: string;
+  id_token?: string;
+};
+
+export type GoogleUserInfo = {
+  id: string;
+  email: string;
+  verified_email: boolean;
+  name: string;
+  given_name?: string;
+  family_name?: string;
+  picture?: string;
+  locale?: string;
+};
+
+export type ExchangeTokenResponse = {
+  accessToken: string;
+  refreshToken?: string;
+};
+
+export type GetUserInfoResponse = {
+  openId: string;
+  email: string;
+  name: string;
+  platform: string | null;
+  loginMethod: string | null;
+};
+
+// Google OAuth endpoints
+const GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
+const GOOGLE_USERINFO_ENDPOINT = "https://www.googleapis.com/oauth2/v2/userinfo";
 
 class OAuthService {
-  constructor(private client: ReturnType<typeof axios.create>) {
-    console.log("[OAuth] Initialized with baseURL:", ENV.oAuthServerUrl);
-    if (!ENV.oAuthServerUrl) {
+  constructor() {
+    console.log("[OAuth] Initialized with Google OAuth");
+    if (!ENV.appId) {
       console.error(
-        "[OAuth] ERROR: OAUTH_SERVER_URL is not configured! Set OAUTH_SERVER_URL environment variable."
+        "[OAuth] ERROR: VITE_APP_ID is not configured! Set VITE_APP_ID environment variable."
       );
     }
   }
@@ -48,48 +75,62 @@ class OAuthService {
     code: string,
     state: string
   ): Promise<ExchangeTokenResponse> {
-    const payload: ExchangeTokenRequest = {
-      clientId: ENV.appId,
-      grantType: "authorization_code",
-      code,
-      redirectUri: this.decodeState(state),
-    };
-
-    const { data } = await this.client.post<ExchangeTokenResponse>(
-      EXCHANGE_TOKEN_PATH,
-      payload
+    const redirectUri = this.decodeState(state);
+    
+    // Exchange authorization code for access token using Google OAuth
+    const { data } = await axios.post<GoogleTokenResponse>(
+      GOOGLE_TOKEN_ENDPOINT,
+      new URLSearchParams({
+        code,
+        client_id: ENV.appId,
+        client_secret: ENV.googleClientSecret || "", // Optional: only needed for server-side apps
+        redirect_uri: redirectUri,
+        grant_type: "authorization_code",
+      }),
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        timeout: AXIOS_TIMEOUT_MS,
+      }
     );
 
-    return data;
+    return {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+    };
   }
 
   async getUserInfoByToken(
     token: ExchangeTokenResponse
   ): Promise<GetUserInfoResponse> {
-    const { data } = await this.client.post<GetUserInfoResponse>(
-      GET_USER_INFO_PATH,
+    // Get user info from Google OAuth
+    const { data } = await axios.get<GoogleUserInfo>(
+      GOOGLE_USERINFO_ENDPOINT,
       {
-        accessToken: token.accessToken,
+        headers: {
+          Authorization: `Bearer ${token.accessToken}`,
+        },
+        timeout: AXIOS_TIMEOUT_MS,
       }
     );
 
-    return data;
+    // Map Google user info to our format
+    return {
+      openId: data.id, // Use Google user ID as openId
+      email: data.email,
+      name: data.name,
+      platform: "google",
+      loginMethod: "google",
+    };
   }
 }
 
-const createOAuthHttpClient = (): AxiosInstance =>
-  axios.create({
-    baseURL: ENV.oAuthServerUrl,
-    timeout: AXIOS_TIMEOUT_MS,
-  });
-
 class SDKServer {
-  private readonly client: AxiosInstance;
   private readonly oauthService: OAuthService;
 
-  constructor(client: AxiosInstance = createOAuthHttpClient()) {
-    this.client = client;
-    this.oauthService = new OAuthService(this.client);
+  constructor() {
+    this.oauthService = new OAuthService();
   }
 
   private deriveLoginMethod(
@@ -235,26 +276,26 @@ class SDKServer {
 
   async getUserInfoWithJwt(
     jwtToken: string
-  ): Promise<GetUserInfoWithJwtResponse> {
-    const payload: GetUserInfoWithJwtRequest = {
-      jwtToken,
-      projectId: ENV.appId,
-    };
+  ): Promise<GetUserInfoResponse> {
+    // Verify JWT token and extract user info
+    const session = await this.verifySession(jwtToken);
+    if (!session) {
+      throw new Error("Invalid JWT token");
+    }
 
-    const { data } = await this.client.post<GetUserInfoWithJwtResponse>(
-      GET_USER_INFO_WITH_JWT_PATH,
-      payload
-    );
+    // Get user from database
+    const user = await db.getUserByOpenId(session.openId);
+    if (!user) {
+      throw new Error("User not found");
+    }
 
-    const loginMethod = this.deriveLoginMethod(
-      (data as any)?.platforms,
-      (data as any)?.platform ?? data.platform ?? null
-    );
     return {
-      ...(data as any),
-      platform: loginMethod,
-      loginMethod,
-    } as GetUserInfoWithJwtResponse;
+      openId: user.openId,
+      email: user.email || "",
+      name: user.name || "",
+      platform: user.loginMethod || "google",
+      loginMethod: user.loginMethod || "google",
+    };
   }
 
   async authenticateRequest(req: Request): Promise<User> {
@@ -271,23 +312,8 @@ class SDKServer {
     const signedInAt = new Date();
     let user = await db.getUserByOpenId(sessionUserId);
 
-    // If user not in DB, sync from OAuth server automatically
-    if (!user) {
-      try {
-        const userInfo = await this.getUserInfoWithJwt(sessionCookie ?? "");
-        await db.upsertUser({
-          openId: userInfo.openId,
-          name: userInfo.name || null,
-          email: userInfo.email ?? null,
-          loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
-          lastSignedIn: signedInAt,
-        });
-        user = await db.getUserByOpenId(userInfo.openId);
-      } catch (error) {
-        console.error("[Auth] Failed to sync user from OAuth:", error);
-        throw ForbiddenError("Failed to sync user info");
-      }
-    }
+    // User should already be in DB from OAuth callback
+    // If not, it means the session is invalid
 
     if (!user) {
       throw ForbiddenError("User not found");

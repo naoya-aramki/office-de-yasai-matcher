@@ -16,7 +16,8 @@ export const ENV = {
   appId: getEnv("VITE_APP_ID"),
   cookieSecret: getEnv("JWT_SECRET"),
   databaseUrl: getEnv("DATABASE_URL"),
-  oAuthServerUrl: getEnv("OAUTH_SERVER_URL"),
+  // Google OAuth Client Secret (optional, only needed for server-side apps)
+  googleClientSecret: getEnv("GOOGLE_CLIENT_SECRET"),
   ownerOpenId: getEnv("OWNER_OPEN_ID"),
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: getEnv("BUILT_IN_FORGE_API_URL"),
