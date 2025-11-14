@@ -77,28 +77,52 @@ class OAuthService {
   ): Promise<ExchangeTokenResponse> {
     const redirectUri = this.decodeState(state);
     
-    // Exchange authorization code for access token using Google OAuth
-    const { data } = await axios.post<GoogleTokenResponse>(
-      GOOGLE_TOKEN_ENDPOINT,
-      new URLSearchParams({
-        code,
-        client_id: ENV.appId,
-        client_secret: ENV.googleClientSecret || "", // Optional: only needed for server-side apps
-        redirect_uri: redirectUri,
-        grant_type: "authorization_code",
-      }),
-      {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        timeout: AXIOS_TIMEOUT_MS,
-      }
-    );
+    if (!ENV.appId) {
+      throw new Error("VITE_APP_ID is not configured");
+    }
 
-    return {
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token,
-    };
+    const params = new URLSearchParams({
+      code,
+      client_id: ENV.appId,
+      redirect_uri: redirectUri,
+      grant_type: "authorization_code",
+    });
+
+    // Google OAuth Client Secret is required for server-side token exchange
+    if (ENV.googleClientSecret) {
+      params.append("client_secret", ENV.googleClientSecret);
+    }
+
+    console.log("[OAuth] Exchanging code for token", {
+      redirectUri,
+      hasClientSecret: !!ENV.googleClientSecret,
+    });
+
+    try {
+      // Exchange authorization code for access token using Google OAuth
+      const { data } = await axios.post<GoogleTokenResponse>(
+        GOOGLE_TOKEN_ENDPOINT,
+        params,
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          timeout: AXIOS_TIMEOUT_MS,
+        }
+      );
+
+      return {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+      };
+    } catch (error: any) {
+      console.error("[OAuth] Token exchange failed", {
+        error: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      throw error;
+    }
   }
 
   async getUserInfoByToken(
