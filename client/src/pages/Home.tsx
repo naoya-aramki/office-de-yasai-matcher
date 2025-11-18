@@ -318,11 +318,6 @@ export default function Home() {
                       </li>
                     ))}
                   </ul>
-                  <div className="pt-2 border-t border-green-200">
-                    <p className="text-sm text-muted-foreground">
-                      マッチングスコア: <span className="font-bold text-primary">{matchResult.matchScore}</span> / 100
-                    </p>
-                  </div>
                 </div>
 
                 {/* 導入の課題 */}
