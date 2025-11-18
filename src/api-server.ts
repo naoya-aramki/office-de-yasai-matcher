@@ -81,11 +81,27 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   
   // Always return JSON, never HTML
   if (!res.headersSent) {
-    // データベース接続エラーの場合は詳細なメッセージを返す
     const statusCode = err.statusCode || 500;
+    const isProduction = process.env.NODE_ENV === "production";
+    
+    // 機密情報をマスク
+    let safeMessage = err.message;
+    if (isProduction) {
+      // 本番環境では汎用的なメッセージのみを返す
+      safeMessage = statusCode >= 500 
+        ? "Internal server error" 
+        : "Request error";
+    } else {
+      // 開発環境では機密情報をマスクしたメッセージを返す
+      safeMessage = err.message
+        .replace(/postgresql:\/\/[^@]+@/g, 'postgresql://***:***@')
+        .replace(/password[=:]\s*[^\s]+/gi, 'password=***')
+        .replace(/DATABASE_URL[=:]\s*[^\s]+/gi, 'DATABASE_URL=***');
+    }
+    
     const errorResponse: any = {
       error: statusCode >= 500 ? "Internal server error" : "Request error",
-      message: err.message,
+      message: safeMessage,
     };
     
     // 開発環境でのみスタックトレースを返す

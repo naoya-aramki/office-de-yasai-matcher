@@ -44,8 +44,14 @@ export async function getDb() {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorCode = (error as any)?.code;
       
+      // 機密情報をマスクしてログ出力
+      const sanitizedMessage = errorMessage
+        .replace(/postgresql:\/\/[^@]+@/g, 'postgresql://***:***@')
+        .replace(/password[=:]\s*[^\s]+/gi, 'password=***')
+        .replace(/DATABASE_URL[=:]\s*[^\s]+/gi, 'DATABASE_URL=***');
+      
       console.error("[Database] Failed to connect:", {
-        message: errorMessage,
+        message: sanitizedMessage,
         code: errorCode,
         detail: (error as any)?.detail,
         hint: (error as any)?.hint,
@@ -56,19 +62,27 @@ export async function getDb() {
       _db = null;
       _sql = null;
       
-      // Supabase特有のエラーメッセージを改善
+      // Supabase特有のエラーメッセージを改善（機密情報を含めない）
       let userFriendlyMessage = "データベース接続に失敗しました";
       if (errorCode === "ECONNREFUSED") {
-        userFriendlyMessage = "データベースサーバーに接続できません。DATABASE_URLを確認してください。";
+        userFriendlyMessage = "データベースサーバーに接続できません。";
       } else if (errorCode === "ETIMEDOUT") {
-        userFriendlyMessage = "データベースへの接続がタイムアウトしました。ネットワーク接続を確認してください。";
-      } else if (errorMessage.includes("SSL")) {
-        userFriendlyMessage = "SSL接続に失敗しました。Supabaseの接続文字列を確認してください。";
+        userFriendlyMessage = "データベースへの接続がタイムアウトしました。";
+      } else if (errorCode === "ENOTFOUND") {
+        userFriendlyMessage = "データベースサーバーが見つかりません。";
+      } else if (errorMessage.includes("SSL") || errorCode === "SELF_SIGNED_CERT_IN_CHAIN") {
+        userFriendlyMessage = "SSL接続に失敗しました。";
       } else if (errorMessage.includes("password") || errorMessage.includes("authentication")) {
-        userFriendlyMessage = "データベース認証に失敗しました。DATABASE_URLの認証情報を確認してください。";
+        userFriendlyMessage = "データベース認証に失敗しました。";
       }
       
-      throw new Error(`${userFriendlyMessage}: ${errorMessage}`);
+      // 本番環境では詳細なエラーメッセージを含めない
+      const isProduction = process.env.NODE_ENV === "production";
+      if (isProduction) {
+        throw new Error(userFriendlyMessage);
+      } else {
+        throw new Error(`${userFriendlyMessage} (詳細: ${sanitizedMessage})`);
+      }
     }
   }
   return _db;
