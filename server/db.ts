@@ -31,7 +31,8 @@ export async function getDb() {
         idle_timeout: 5, // アイドルタイムアウトを短く（5秒）
         connect_timeout: 10, // 接続タイムアウト10秒
         prepare: false, // プリペアドステートメントを無効化（Supabaseで互換性問題がある場合がある）
-        ssl: true, // SupabaseはSSL必須（接続文字列に?sslmode=requireが含まれている場合でも明示的に設定）
+        // SSL設定は接続文字列の?sslmode=requireで自動的に処理される
+        // 明示的にssl: trueを設定すると証明書検証が厳しくなり、self-signed certificateエラーが発生する可能性がある
       });
       _db = drizzle(_sql);
       
