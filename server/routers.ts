@@ -24,9 +24,16 @@ function calculateMatchScore(
   } else if (caseIndustry) {
     // 部分一致
     if (caseIndustry.includes(prospectIndustry) || prospectIndustry.includes(caseIndustry)) {
-      score += 15;
+      score += 20; // 15→20に増加
       reasons.push(`類似業界（${caseIndustry}）の導入実績があります`);
+    } else {
+      // 業界が異なってもベース点を付与
+      score += 5;
+      reasons.push(`導入実績があります`);
     }
+  } else {
+    // 業界情報がなくてもベース点を付与
+    score += 5;
   }
 
   // 従業員数マッチング（40点）
@@ -40,13 +47,27 @@ function calculateMatchScore(
       reasons.push(`従業員数が近い規模（${caseEmployeeCount}名）の企業です`);
     } else if (ratio < 0.5) {
       // 50%以内の差
-      score += 27;
+      score += 30; // 27→30に増加
       reasons.push(`従業員数が比較的近い規模（${caseEmployeeCount}名）の企業です`);
     } else if (ratio < 1.0) {
       // 100%以内の差
-      score += 13;
+      score += 20; // 13→20に増加
       reasons.push(`従業員数は${caseEmployeeCount}名の企業です`);
+    } else if (ratio < 2.0) {
+      // 200%以内の差
+      score += 10; // 5→10に増加
+      reasons.push(`従業員数は${caseEmployeeCount}名の企業です`);
+    } else if (ratio < 5.0) {
+      // 500%以内の差でも点数を付与
+      score += 5;
+      reasons.push(`従業員数は${caseEmployeeCount}名の企業です`);
+    } else {
+      // それ以上でも最低限の点数を付与
+      score += 3;
     }
+  } else {
+    // 従業員数情報がなくてもベース点を付与
+    score += 5;
   }
 
   // 課題マッチング（30点）
@@ -64,18 +85,61 @@ function calculateMatchScore(
       '食環境', '健康経営'
     ];
 
+    let matched = false;
     for (const keyword of keywords) {
       if (prospectChallengesLower.includes(keyword) && challengeLower.includes(keyword)) {
         challengeMatchCount++;
         matchedChallenges.push(challenge);
+        matched = true;
         break;
+      }
+    }
+    
+    // 改善：キーワードが一致しない場合でも、文字列の類似度をチェック
+    if (!matched && prospectChallenges.length > 0 && challenge.length > 0) {
+      // 簡単な文字列類似度チェック（共通文字の割合）
+      const prospectWords = prospectChallengesLower.split(/[\s、。、,\.]+/).filter(w => w.length > 1);
+      const challengeWords = challengeLower.split(/[\s、。、,\.]+/).filter(w => w.length > 1);
+      const commonWords = prospectWords.filter(w => challengeWords.includes(w));
+      
+      // 共通単語の閾値を下げて、より多くのケースで点数を付与（0.3→0.2）
+      if (commonWords.length > 0 && commonWords.length >= Math.min(prospectWords.length, challengeWords.length) * 0.2) {
+        challengeMatchCount += 0.7; // 0.5→0.7に増加（10点の70%）
+        if (matchedChallenges.length < 2) {
+          matchedChallenges.push(challenge);
+        }
+      } else if (commonWords.length > 0) {
+        // 共通単語が1つでもあれば部分点を付与
+        challengeMatchCount += 0.3; // 最低限の点数
+        if (matchedChallenges.length < 2) {
+          matchedChallenges.push(challenge);
+        }
       }
     }
   }
 
   if (challengeMatchCount > 0) {
-    score += Math.min(30, challengeMatchCount * 10);
+    // 改善：小数点も考慮してスコア計算、より多くの点数を付与
+    const baseScore = Math.floor(challengeMatchCount) * 10;
+    const decimalPart = challengeMatchCount % 1;
+    let bonusScore = 0;
+    if (decimalPart >= 0.7) {
+      bonusScore = 7; // 0.7以上で7点
+    } else if (decimalPart >= 0.5) {
+      bonusScore = 5; // 0.5以上で5点
+    } else if (decimalPart >= 0.3) {
+      bonusScore = 3; // 0.3以上で3点
+    }
+    score += Math.min(30, baseScore + bonusScore);
     reasons.push(`類似の課題（${matchedChallenges.slice(0, 2).join('、')}）を抱えていました`);
+  } else {
+    // 課題が一致しなくてもベース点を付与
+    score += 5;
+  }
+
+  // ベーススコアを追加（最低でも10点は保証）
+  if (score < 10) {
+    score = 10;
   }
 
   return { score, reasons };
