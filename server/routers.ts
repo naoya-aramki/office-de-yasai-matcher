@@ -95,8 +95,8 @@ export const appRouter = router({
   }),
 
   cases: router({
-    // 全事例を取得（認証必須）
-    getAll: protectedProcedure.query(async () => {
+    // 全事例を取得（認証なし）
+    getAll: publicProcedure.query(async () => {
       try {
         const allCases = await getAllCases();
         return allCases.map(c => {
@@ -123,8 +123,8 @@ export const appRouter = router({
       }
     }),
 
-    // マッチング実行（認証必須）
-    match: protectedProcedure
+    // マッチング実行（認証なし）
+    match: publicProcedure
       .input(z.object({
         industry: z.string(),
         employeeCount: z.number().nullable(),

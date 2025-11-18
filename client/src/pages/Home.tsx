@@ -12,9 +12,9 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 
 export default function Home() {
-  // 認証チェック
+  // 認証チェック（一時的に無効化）
   const { user, loading: authLoading, isAuthenticated, logout } = useAuth({
-    redirectOnUnauthenticated: true,
+    redirectOnUnauthenticated: false, // 認証をスキップ
   });
 
   const [industry, setIndustry] = useState("");
@@ -100,22 +100,22 @@ export default function Home() {
     });
   };
 
-  // 認証チェック中はローディング表示
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-green-600" />
-          <p className="text-muted-foreground">認証中...</p>
-        </div>
-      </div>
-    );
-  }
+  // 認証チェックをスキップ（認証なしでアクセス可能）
+  // if (authLoading) {
+  //   return (
+  //     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 flex items-center justify-center">
+  //       <div className="text-center space-y-4">
+  //         <Loader2 className="h-8 w-8 animate-spin mx-auto text-green-600" />
+  //         <p className="text-muted-foreground">認証中...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
-  // 未認証の場合はログイン画面へリダイレクト（useAuthで自動的にリダイレクトされる）
-  if (!isAuthenticated) {
-    return null;
-  }
+  // 未認証の場合はログイン画面へリダイレクト（一時的に無効化）
+  // if (!isAuthenticated) {
+  //   return null;
+  // }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50">
