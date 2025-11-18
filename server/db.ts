@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { InsertUser, users, cases, InsertCase, Case } from "../drizzle/schema";
+import { InsertUser, users, cases, InsertCase, Case, prospects, InsertProspect } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { sql } from "drizzle-orm";
 
@@ -209,4 +209,21 @@ export async function clearAllCases(): Promise<void> {
   }
 
   await db.delete(cases);
+}
+
+// 見込み顧客関連のヘルパー関数
+
+export async function insertProspect(prospectData: InsertProspect): Promise<number> {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("データベース接続が利用できません。DATABASE_URL環境変数を確認してください。");
+  }
+
+  try {
+    const result = await db.insert(prospects).values(prospectData).returning({ id: prospects.id });
+    return result[0].id;
+  } catch (error) {
+    console.error("[Database] Failed to insert prospect:", error);
+    throw new Error(`見込み顧客データの保存に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }

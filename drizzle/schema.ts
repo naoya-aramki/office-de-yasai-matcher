@@ -47,3 +47,20 @@ export const cases = pgTable("cases", {
 
 export type Case = typeof cases.$inferSelect;
 export type InsertCase = typeof cases.$inferInsert;
+
+/**
+ * 見込み顧客テーブル
+ * マッチングリクエストの入力内容を保存
+ */
+export const prospects = pgTable("prospects", {
+  id: serial("id").primaryKey(),
+  industry: varchar("industry", { length: 100 }).notNull(),
+  employeeCount: integer("employeeCount"),
+  challenges: text("challenges").notNull(), // 課題のテキスト
+  matchedCaseId: integer("matchedCaseId"), // マッチした事例のID（オプション）
+  matchScore: integer("matchScore"), // マッチングスコア（オプション）
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Prospect = typeof prospects.$inferSelect;
+export type InsertProspect = typeof prospects.$inferInsert;

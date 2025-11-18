@@ -2,7 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { getAllCases } from "./db";
+import { getAllCases, insertProspect } from "./db";
 import { z } from "zod";
 
 // マッチングロジック
@@ -198,6 +198,21 @@ export const appRouter = router({
         // スコアでソートして最高スコアの事例を返す
         scoredCases.sort((a, b) => b.score - a.score);
         const bestMatch = scoredCases[0];
+
+        // 見込み顧客の入力内容をデータベースに保存
+        try {
+          await insertProspect({
+            industry: input.industry,
+            employeeCount: input.employeeCount,
+            challenges: input.challenges,
+            matchedCaseId: bestMatch.case.id,
+            matchScore: bestMatch.score,
+          });
+          console.log("[Cases] Prospect data saved successfully");
+        } catch (saveError) {
+          // 保存に失敗してもマッチング結果は返す（ログのみ出力）
+          console.error("[Cases] Failed to save prospect data:", saveError);
+        }
 
         return {
           matchedCase: bestMatch.case,
